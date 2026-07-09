@@ -149,6 +149,7 @@
   .calc-badge{display:block;text-align:center;padding:9px 12px;border-radius:20px;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-bottom:14px;line-height:1.4;}
   .calc-badge.standard{background:rgba(34,199,122,0.16);color:var(--emerald);}
   .calc-badge.split{background:rgba(240,183,74,0.18);color:var(--amber);}
+  .calc-bus-banner{text-align:center;font-family:'Fraunces',serif;font-weight:700;font-size:15px;color:#052b1e;background:linear-gradient(135deg,var(--gold),var(--gold-soft));padding:9px 12px;border-radius:12px;margin-bottom:14px;letter-spacing:.3px;}
   .calc-share-footer{margin-top:16px;padding-top:12px;border-top:1px solid var(--line);text-align:center;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--gold-soft);font-weight:700;}
 
   @media print{
@@ -350,7 +351,7 @@
     <div class="card">
       <h3>🧮 Daily Profit Calculator</h3>
       <label>Bus</label>
-      <select id="calc_bus"></select>
+      <select id="calc_bus" onchange="calcQuick()"></select>
       <label>Total Daily Income (Rs.)</label>
       <input type="number" id="calc_total" inputmode="decimal" placeholder="0.00" oninput="calcQuick()">
       <div class="row2">
@@ -360,6 +361,7 @@
     </div>
 
     <div class="card" id="calc_share_card">
+      <div class="calc-bus-banner" id="calc_bus_banner">🚌 Bus: —</div>
       <h3>📊 Payout Breakdown</h3>
       <div class="calc-badge" id="calc_badge">✅ Standard 15% Payout Applied</div>
       <div class="calc-row"><span>Total Daily Income</span><b id="calc_income">LKR 0.00</b></div>
@@ -372,7 +374,7 @@
         <div class="lbl">Owner's Net Profit</div>
         <div class="val" id="calc_balance">LKR 0.00</div>
       </div>
-      <div class="calc-share-footer" id="calc_share_footer">Falcon Unlimited · <span id="calc_share_date"></span></div>
+      <div class="calc-share-footer" id="calc_share_footer">Falcon Unlimited · <span id="calc_bus_footer">—</span> · <span id="calc_share_date"></span></div>
     </div>
 
     <div class="row2">
@@ -392,7 +394,10 @@ const FALCON_LOGO_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAaQAAAE9C
 document.querySelectorAll('.brand-logo-img').forEach(img=>{ img.src = FALCON_LOGO_URI; });
 const CONFIG = {
   // Paste your deployed Apps Script Web App URL here (ends with /exec)
-  API_URL: 'https://script.google.com/macros/s/AKfycbwOAPhkBFcm-L1URx8n9c8b-TbnhQyBdJ1vkwqX1tt1VqMNxkAn019UCj4P1xNiN67Nww/exec'
+  API_URL: 'https://script.google.com/macros/s/AKfycbwOAPhkBFcm-L1URx8n9c8b-TbnhQyBdJ1vkwqX1tt1VqMNxkAn019UCj4P1xNiN67Nww/exec',
+  // Your Falcon Unlimited WhatsApp group invite link (used as a fallback destination —
+  // see shareWhatsApp() for why WhatsApp doesn't allow pre-filling a message into a group)
+  WHATSAPP_GROUP_LINK: 'https://chat.whatsapp.com/GEPnJaXCrpfFypkJ1pEi2A'
 };
 
 let SETTINGS = { diesel_price_per_litre: 341, assistant_pin: '5678', owner_pin: '1234' };
@@ -496,6 +501,7 @@ async function initApp(){
   document.getElementById('calc_bus').innerHTML = BUSES.map(b=>`<option value="${b}">${b}</option>`).join('');
 
   attachLiveCalcs();
+  calcQuick();
   loadRecent();
 }
 
@@ -576,9 +582,12 @@ function calcQuick(){
   const badgeEl = document.getElementById('calc_badge');
   badgeEl.textContent = badgeText;
   badgeEl.className = 'calc-badge ' + badgeClass;
+  const busName = document.getElementById('calc_bus').value || '—';
+  document.getElementById('calc_bus_banner').textContent = '🚌 Bus: ' + busName;
+  document.getElementById('calc_bus_footer').textContent = busName;
   document.getElementById('calc_share_date').textContent = new Date().toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'});
 
-  LAST_CALC = { bus: document.getElementById('calc_bus').value, income, diesel, expenses, totalExpenses, driver, assistant, owner, badgeText };
+  LAST_CALC = { bus: busName, income, diesel, expenses, totalExpenses, driver, assistant, owner, badgeText };
 }
 function resetCalc(){
   ['calc_total','calc_fuel','calc_expenses'].forEach(id=>document.getElementById(id).value='');
@@ -617,12 +626,17 @@ async function captureCalcCanvas(){
   return await html2canvas(node, { backgroundColor: '#0c3226', scale: 2 });
 }
 
+function calcFileTag(){
+  const bus = (LAST_CALC && LAST_CALC.bus ? LAST_CALC.bus : 'Bus').replace(/[^a-zA-Z0-9]+/g, '_');
+  return `Falcon_${bus}_${todayISO()}`;
+}
+
 async function saveCalcImage(){
   if(!LAST_CALC || !LAST_CALC.income){ showToast('Enter figures in the calculator first', true); return; }
   try{
     const canvas = await captureCalcCanvas();
     const link = document.createElement('a');
-    link.download = `Falcon_Calc_${todayISO()}.png`;
+    link.download = `${calcFileTag()}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
     showToast('Saved — check your Downloads/Photos ✓');
@@ -634,17 +648,34 @@ async function saveCalcImage(){
 async function shareWhatsApp(){
   if(!LAST_CALC || !LAST_CALC.income){ showToast('Enter figures in the calculator first', true); return; }
   const text = buildCalcShareText();
+
+  // Best path (works on almost all phones): native share sheet with the image attached.
+  // The person picks the Falcon group (or anyone else) themselves — this is also the ONLY
+  // reliable way to land a pre-attached image straight into a specific WhatsApp group,
+  // since WhatsApp does not support pre-filling messages into groups via a link.
   try{
     const canvas = await captureCalcCanvas();
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-    const file = new File([blob], `Falcon_Calc_${todayISO()}.png`, { type: 'image/png' });
+    const file = new File([blob], `${calcFileTag()}.png`, { type: 'image/png' });
     if(navigator.canShare && navigator.canShare({ files: [file] })){
       await navigator.share({ files: [file], title: 'Falcon Unlimited — Daily Calculation', text });
       return;
     }
-  }catch(e){ /* fall through to text link below */ }
-  // Fallback for desktop / browsers without file-sharing support: opens WhatsApp with the text pre-filled
-  window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+  }catch(e){ /* fall through to fallback below */ }
+
+  // Fallback (desktop, or a browser without file-sharing support):
+  // save the image, copy the caption to the clipboard, then open the Falcon group —
+  // the image + text still need to be attached manually since a link can't do that for a group.
+  try{
+    const canvas = await captureCalcCanvas();
+    const link = document.createElement('a');
+    link.download = `${calcFileTag()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }catch(e){}
+  try{ await navigator.clipboard.writeText(text); }catch(e){}
+  window.open(CONFIG.WHATSAPP_GROUP_LINK, '_blank');
+  showToast('Image saved + caption copied — paste both into the group ✓');
 }
 
 /* ============== SUBMIT: INCOME ============== */
