@@ -22,7 +22,7 @@
     --bg-panel:#0c3226;
     --bg-card:#0f3d2f;
     --bg-card-hi:#134a39;
-    --line:rgba(212,175,55,0.18);
+    --line:rgba(212,175,55,0.28);
     --emerald:#22c77a;
     --emerald-dim:#1a8f5a;
     --gold:#d4af37;
@@ -58,6 +58,8 @@
   .brand-logo-img{width:85%;height:85%;object-fit:contain;filter:drop-shadow(0 0 10px rgba(242,201,76,.35));}
   @keyframes rotateNeon{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
   .brand-slogan{font-size:10.5px;letter-spacing:1.8px;text-transform:uppercase;color:var(--gold-soft);margin-top:4px;font-weight:700;}
+  .trademark{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);opacity:.75;margin-top:8px;}
+  .trademark-sm{font-size:8.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--gold-soft);opacity:.75;margin-top:1px;}
   .brand h1{font-family:'Fraunces',serif;font-weight:700;font-size:24px;margin:0;letter-spacing:0.3px;}
   .brand p{color:var(--text-muted);margin:6px 0 0;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;}
   .pin-dots{display:flex;gap:14px;justify-content:center;margin:26px 0;}
@@ -83,9 +85,10 @@
   .tabs{display:flex;gap:8px;background:var(--bg-panel);padding:6px;border-radius:14px;margin-bottom:20px;border:1px solid var(--line);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
   .tabs::-webkit-scrollbar{display:none;}
   .tabs button{flex:0 0 auto;white-space:nowrap;padding:10px 14px;border:none;border-radius:10px;background:transparent;color:var(--text-muted);font-family:'Manrope',sans-serif;font-weight:700;font-size:12.5px;}
-  .tabs button.active{background:linear-gradient(135deg,var(--emerald),var(--emerald-dim));color:#052b1e;box-shadow:var(--shadow);}
+  .tabs button.active{background:linear-gradient(135deg,var(--gold),var(--emerald));color:#052b1e;box-shadow:0 4px 12px rgba(212,175,55,0.3);}
 
-  .card{background:linear-gradient(180deg,var(--bg-card),var(--bg-panel));border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:16px;box-shadow:var(--shadow);}
+  .card{position:relative;overflow:hidden;background:linear-gradient(180deg,var(--bg-card),var(--bg-panel));border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:16px;box-shadow:var(--shadow);}
+  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.7;}
   .card h3{font-family:'Fraunces',serif;margin:0 0 14px;font-size:16px;color:var(--gold-soft);display:flex;align-items:center;gap:8px;}
 
   label{display:block;font-size:12px;color:var(--text-muted);margin:12px 0 6px;font-weight:600;letter-spacing:.3px;}
@@ -177,6 +180,7 @@
     <h1>FALCON UNLIMITED</h1>
     <div class="brand-slogan">Ride the Power · Rule the Road</div>
     <p>Assistant Access</p>
+    <div class="trademark">Sehansa Super Line (Pvt) Ltd</div>
   </div>
   <div class="pin-dots" id="pinDots">
     <span></span><span></span><span></span><span></span>
@@ -201,6 +205,7 @@
       <div>
         <h2>FALCON UNLIMITED</h2>
         <div class="sub" id="todayLabel">—</div>
+        <div class="trademark-sm">Sehansa Super Line (Pvt) Ltd</div>
       </div>
     </div>
     <button class="logout-btn" onclick="logout()">Log out</button>
@@ -394,13 +399,13 @@ const FALCON_LOGO_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAaQAAAE9C
 document.querySelectorAll('.brand-logo-img').forEach(img=>{ img.src = FALCON_LOGO_URI; });
 const CONFIG = {
   // Paste your deployed Apps Script Web App URL here (ends with /exec)
-  API_URL: 'https://script.google.com/macros/s/AKfycbwOAPhkBFcm-L1URx8n9c8b-TbnhQyBdJ1vkwqX1tt1VqMNxkAn019UCj4P1xNiN67Nww/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbxhOdbsv15alHzE_B5nfJSgEfi2SgZiSL18WWIjHwG8O2z2bKuJ1iqUvxFdiqButbRJew/exec',
   // Your Falcon Unlimited WhatsApp group invite link (used as a fallback destination —
   // see shareWhatsApp() for why WhatsApp doesn't allow pre-filling a message into a group)
   WHATSAPP_GROUP_LINK: 'https://chat.whatsapp.com/GEPnJaXCrpfFypkJ1pEi2A'
 };
 
-let SETTINGS = { diesel_price_per_litre: 341, assistant_pin: '5678', owner_pin: '1234' };
+let SETTINGS = { diesel_price_per_litre: 341, assistant_pin: '5678', owner_pin: '1020' };
 let BUSES = ['NC 7018','HC 7260','Falcon'];
 
 /* ============== HELPERS ============== */
@@ -451,7 +456,7 @@ async function tryLogin(){
     if(s && s.error){ errEl.textContent = 'Server error: ' + s.error; pin=''; renderDots(); return; }
     SETTINGS = {...SETTINGS, ...s};
     const asstPin = String(SETTINGS.assistant_pin !== undefined ? SETTINGS.assistant_pin : '5678');
-    const ownerPin = String(SETTINGS.owner_pin !== undefined ? SETTINGS.owner_pin : '1234');
+    const ownerPin = String(SETTINGS.owner_pin !== undefined ? SETTINGS.owner_pin : '1020');
     if(pin === asstPin || pin === ownerPin){
       errEl.textContent = '';
       document.getElementById('loginScreen').style.display = 'none';
@@ -489,7 +494,8 @@ async function initApp(){
   ['inc_date','rep_date','trp_date','cb_date'].forEach(id => document.getElementById(id).value = todayISO());
 
   try{
-    BUSES = await apiGet('getBuses');
+    const fetched = await apiGet('getBuses');
+    if(Array.isArray(fetched) && fetched.length) BUSES = fetched;
   }catch(e){}
   ['inc_bus','rep_bus'].forEach(id=>{
     const sel = document.getElementById(id);
@@ -692,6 +698,7 @@ async function submitIncome(){
     Turns: document.getElementById('inc_turns').value,
     Comments: document.getElementById('inc_comments').value
   };
+  if(!payload.Bus_Number){ showToast('Please select a bus', true); return; }
   if(!payload.Income){ showToast('Enter total income first', true); return; }
   btn.disabled = true; btn.textContent = 'Saving…';
   try{
@@ -718,6 +725,7 @@ async function submitRepair(){
     Vendor: document.getElementById('rep_vendor').value,
     Notes: document.getElementById('rep_notes').value
   };
+  if(!payload.Bus_Number){ showToast('Please select a bus', true); return; }
   if(!payload.Cost){ showToast('Enter repair cost', true); return; }
   btn.disabled = true; btn.textContent = 'Saving…';
   try{
@@ -744,6 +752,7 @@ async function submitTrip(){
     Other_Expenses: document.getElementById('trp_other').value,
     Notes: document.getElementById('trp_notes').value
   };
+  if(!payload.Bus_Number){ showToast('Please select a bus', true); return; }
   if(!payload.Income){ showToast('Enter trip income first', true); return; }
   btn.disabled = true; btn.textContent = 'Saving…';
   try{
